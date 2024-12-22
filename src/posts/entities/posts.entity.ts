@@ -1,11 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { UsersModel } from 'src/users/entities/users.entity';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class PostsModel {
   @PrimaryGeneratedColumn()
   id: number;
-  @Column()
-  author: string;
   @Column()
   title: string;
   @Column()
@@ -14,4 +13,9 @@ export class PostsModel {
   likeCount: number;
   @Column()
   commentCount: number;
+  @ManyToOne(() => UsersModel, (user) => user.posts, {
+    nullable: false,
+    // eager: true,
+  })
+  author: UsersModel;
 }
