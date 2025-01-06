@@ -15,7 +15,6 @@ export class PostsModel {
   commentCount: number;
   @ManyToOne(() => UsersModel, (user) => user.posts, {
     nullable: false,
-    // eager: true,
   })
   author: UsersModel;
 }
