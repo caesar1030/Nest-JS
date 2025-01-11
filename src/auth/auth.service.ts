@@ -53,8 +53,8 @@ export class AuthService {
       return this.jwtService.verify(token, {
         secret: this.configService.get(ENV_JWT_SECRET_KEY),
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
-      console.log(e);
       throw new UnauthorizedException('토큰이 만료됐거나 잘못된 토큰입니다.');
     }
   }
