@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,10 +18,17 @@ import { User } from 'src/users/decorator/user.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginatePostDto } from './dto/paginatate-post.dto';
+import { ImageModelType } from 'src/common/entity/image.entity';
+import { DataSource } from 'typeorm';
+import { PostsImagesService } from './image/images.service';
 
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly dataSource: DataSource,
+    private readonly postImagesService: PostsImagesService,
+  ) {}
 
   @Get()
   getPosts(@Query() query: PaginatePostDto) {
@@ -43,8 +51,35 @@ export class PostsController {
   @Post()
   @UseGuards(AccessTokenGuard)
   async postPosts(@User() user: UsersModel, @Body() body: CreatePostDto) {
-    await this.postsService.createPostImage(body);
-    return this.postsService.createPost(user.id, body);
+    const qr = this.dataSource.createQueryRunner();
+
+    await qr.connect();
+    await qr.startTransaction();
+
+    try {
+      const post = await this.postsService.createPost(user.id, body, qr);
+
+      for (let i = 0; i < body.images.length; i++) {
+        await this.postImagesService.createPostImage(
+          {
+            post,
+            order: i,
+            path: body.images[i],
+            type: ImageModelType.POST_IMAGE,
+          },
+          qr,
+        );
+      }
+
+      await qr.commitTransaction();
+      await qr.release();
+      return this.postsService.getPostById(post.id);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      await qr.rollbackTransaction();
+      await qr.release();
+      throw new BadRequestException('잘못된 요청입니다.');
+    }
   }
 
   @Patch(':id')
