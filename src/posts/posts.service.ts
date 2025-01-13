@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { PostsModel } from './entities/posts.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,6 +10,13 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginatePostDto } from './dto/paginatate-post.dto';
 import { CommonService } from 'src/common/common.service';
+import {
+  POST_IMAGE_PATH,
+  PULBIC_FOLDER_PATH,
+  TEMP_FOLDER_PATH,
+} from 'src/common/const/path.const';
+import { basename, join } from 'path';
+import { promises } from 'fs';
 
 export interface PostModel {
   id: number;
@@ -64,13 +75,12 @@ export class PostsService {
     return post;
   }
 
-  async createPost(authorId: number, postDto: CreatePostDto, image?: string) {
+  async createPost(authorId: number, postDto: CreatePostDto) {
     const post = this.postsRepository.create({
       author: {
         id: authorId,
       },
       ...postDto,
-      image,
       likeCount: 0,
       commentCount: 0,
     });
@@ -78,6 +88,25 @@ export class PostsService {
     const newPost = await this.postsRepository.save(post);
 
     return newPost;
+  }
+
+  async createPostImage(dto: CreatePostDto) {
+    const tempFilePath = join(TEMP_FOLDER_PATH, dto.image);
+
+    try {
+      await promises.access(tempFilePath);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e) {
+      throw new BadRequestException('존재하지 않는 파일입니다.');
+    }
+
+    const fileName = basename(tempFilePath);
+
+    const newPath = join(POST_IMAGE_PATH, fileName);
+
+    await promises.rename(tempFilePath, newPath);
+
+    return true;
   }
 
   async updatePost(postId: number, { title, content }: UpdatePostDto) {
